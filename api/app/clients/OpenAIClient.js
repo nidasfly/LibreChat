@@ -164,7 +164,7 @@ class OpenAIClient extends BaseClient {
     this.isUnofficialChatGptModel =
       model.startsWith('text-chat') || model.startsWith('text-davinci-002-render');
 
-    this.maxContextTokens = (process.env.OPENAI_PREVENT_CONTEXT_TOKENS_CHANGE.toLowerCase() === 'false' && this.options.maxContextTokens) ?
+    this.maxContextTokens = (process.env.OPENAI_PREVENT_CONTEXT_TOKENS_CHANGE.toLowerCase() != 'true' && this.options.maxContextTokens) ?
       this.options.maxContextTokens :
       (process.env.OPENAI_MAX_CONTEXT_TOKENS ??
       getModelMaxTokens(
