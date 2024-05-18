@@ -129,6 +129,10 @@ class OpenAIClient extends BaseClient {
       this.useOpenRouter = true;
     }
 
+    if (this.options.endpoint?.toLowerCase() === 'ollama') {
+      this.isOllama = true;
+    }
+
     this.FORCE_PROMPT =
       isEnabled(OPENAI_FORCE_PROMPT) ||
       (reverseProxy && reverseProxy.includes('completions') && !reverseProxy.includes('chat'));
@@ -304,7 +308,7 @@ class OpenAIClient extends BaseClient {
     let tokenizer;
     this.encoding = 'text-davinci-003';
     if (this.isChatCompletion) {
-      this.encoding = 'cl100k_base';
+      this.encoding = this.modelOptions.model.includes('gpt-4o') ? 'o200k_base' : 'cl100k_base';
       tokenizer = this.constructor.getTokenizer(this.encoding);
     } else if (this.isUnofficialChatGptModel) {
       const extendSpecialTokens = {
@@ -1121,7 +1125,7 @@ ${convo}
       });
 
       /* Re-orders system message to the top of the messages payload, as not allowed anywhere else */
-      if (opts.baseURL.includes('api.mistral.ai') && modelOptions.messages) {
+      if (modelOptions.messages && (opts.baseURL.includes('api.mistral.ai') || this.isOllama)) {
         const { messages } = modelOptions;
 
         const systemMessageIndex = messages.findIndex((msg) => msg.role === 'system');
@@ -1165,7 +1169,7 @@ ${convo}
         });
       }
 
-      if (this.message_file_map && this.options.endpoint?.toLowerCase() === 'ollama') {
+      if (this.message_file_map && this.isOllama) {
         const ollamaClient = new OllamaClient({ baseURL });
         return await ollamaClient.chatCompletion({
           payload: modelOptions,
