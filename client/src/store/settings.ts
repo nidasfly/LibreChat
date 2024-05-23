@@ -41,16 +41,16 @@ const staticAtoms = {
 
 // Atoms with localStorage
 const localStorageAtoms = {
-  autoScroll: atomWithLocalStorage('autoScroll', false),
+  autoScroll: atomWithLocalStorage('autoScroll', true),
   showCode: atomWithLocalStorage('showCode', false),
   hideSidePanel: atomWithLocalStorage('hideSidePanel', false),
-  modularChat: atomWithLocalStorage('modularChat', false),
+  modularChat: atomWithLocalStorage('modularChat', true),
   LaTeXParsing: atomWithLocalStorage('LaTeXParsing', true),
   UsernameDisplay: atomWithLocalStorage('UsernameDisplay', true),
-  TextToSpeech: atomWithLocalStorage('textToSpeech', true),
+  TextToSpeech: atomWithLocalStorage('textToSpeech', false),
   automaticPlayback: atomWithLocalStorage('automaticPlayback', false),
   enterToSend: atomWithLocalStorage('enterToSend', true),
-  SpeechToText: atomWithLocalStorage('speechToText', true),
+  SpeechToText: atomWithLocalStorage('speechToText', false),
   conversationMode: atomWithLocalStorage('conversationMode', false),
   advancedMode: atomWithLocalStorage('advancedMode', false),
   autoSendText: atomWithLocalStorage('autoSendText', false),
