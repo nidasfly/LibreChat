@@ -27,6 +27,7 @@ const {
   createContextHandlers,
 } = require('./prompts');
 const { encodeAndFormat } = require('~/server/services/Files/images/encode');
+const { updateTokenWebsocket } = require('~/server/services/Files/Audio');
 const { isEnabled, sleep } = require('~/server/utils');
 const { handleOpenAIErrors } = require('./tools/util');
 const spendTokens = require('~/models/spendTokens');
@@ -595,6 +596,7 @@ class OpenAIClient extends BaseClient {
         payload,
         (progressMessage) => {
           if (progressMessage === '[DONE]') {
+            updateTokenWebsocket('[DONE]');
             return;
           }
 
@@ -757,6 +759,8 @@ class OpenAIClient extends BaseClient {
    *                            In case of failure, it will return the default title, "New Chat".
    */
   async titleConvo({ text, conversationId, responseText = '' }) {
+    this.conversationId = conversationId;
+
     if (this.options.attachments) {
       delete this.options.attachments;
     }
@@ -839,13 +843,17 @@ ${convo}
 
       try {
         let useChatCompletion = true;
+
         if (this.options.reverseProxyUrl === CohereConstants.API_URL) {
           useChatCompletion = false;
         }
+
         title = (
           await this.sendPayload(instructionsPayload, { modelOptions, useChatCompletion })
         ).replaceAll('"', '');
+
         const completionTokens = this.getTokenCount(title);
+
         this.recordTokenUsage({ promptTokens, completionTokens, context: 'title' });
       } catch (e) {
         logger.error(
@@ -869,6 +877,7 @@ ${convo}
         context: 'title',
         tokenBuffer: 150,
       });
+
       title = await runTitleChain({ llm, text, convo, signal: this.abortController.signal });
     } catch (e) {
       if (e?.message?.toLowerCase()?.includes('abort')) {
@@ -1006,9 +1015,9 @@ ${convo}
     await spendTokens(
       {
         context,
-        user: this.user,
         model: this.modelOptions.model,
         conversationId: this.conversationId,
+        user: this.user ?? this.options.req.user?.id,
         endpointTokenConfig: this.options.endpointTokenConfig,
       },
       { promptTokens, completionTokens },
@@ -1210,6 +1219,7 @@ ${convo}
           });
 
         const azureDelay = this.modelOptions.model?.includes('gpt-4') ? 30 : 17;
+
         for await (const chunk of stream) {
           const token = chunk.choices[0]?.delta?.content || '';
           intermediateReply += token;
