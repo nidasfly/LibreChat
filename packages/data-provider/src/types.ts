@@ -7,6 +7,7 @@ import type {
   TSharedLink,
   TConversation,
   EModelEndpoint,
+  TConversationTag,
 } from './schemas';
 import type { TSpecsConfig } from './models';
 export type TOpenAIMessage = OpenAI.Chat.ChatCompletionMessageParam;
@@ -170,6 +171,25 @@ export type TSharedLinkResponse = TSharedLink;
 export type TSharedLinksResponse = TSharedLink[];
 export type TDeleteSharedLinkResponse = TSharedLink;
 
+// type for getting conversation tags
+export type TConversationTagsResponse = TConversationTag[];
+// type for creating conversation tag
+export type TConversationTagRequest = Partial<
+  Omit<TConversationTag, 'createdAt' | 'updatedAt' | 'count' | 'user'>
+> & {
+  conversationId?: string;
+  addToConversation?: boolean;
+};
+
+export type TConversationTagResponse = TConversationTag;
+
+// type for tagging conversation
+export type TTagConversationRequest = {
+  conversationId: string;
+  tags: string[];
+};
+export type TTagConversationResponse = string[];
+
 export type TForkConvoRequest = {
   messageId: string;
   conversationId: string;
@@ -294,7 +314,13 @@ export type TStartupConfig = {
   openidLoginEnabled: boolean;
   openidLabel: string;
   openidImageUrl: string;
-  ldapLoginEnabled: boolean;
+  /** LDAP Auth Configuration */
+  ldap?: {
+    /** LDAP enabled */
+    enabled: boolean;
+    /** Whether LDAP uses username vs. email */
+    username?: boolean;
+  };
   serverDomain: string;
   emailLoginEnabled: boolean;
   registrationEnabled: boolean;
@@ -351,6 +377,7 @@ export type TPrompt = {
 export type TPromptGroup = {
   name: string;
   numberOfGenerations?: number;
+  command?: string;
   oneliner?: string;
   category?: string;
   projectIds?: string[];
@@ -365,7 +392,7 @@ export type TPromptGroup = {
 
 export type TCreatePrompt = {
   prompt: Pick<TPrompt, 'prompt' | 'type'> & { groupId?: string };
-  group?: { name: string; category?: string; oneliner?: string };
+  group?: { name: string; category?: string; oneliner?: string; command?: string };
 };
 
 export type TCreatePromptRecord = TCreatePrompt & Pick<TPromptGroup, 'author' | 'authorName'>;
@@ -385,6 +412,7 @@ export type TPromptGroupsWithFilterRequest = {
   after?: string | null;
   order?: 'asc' | 'desc';
   name?: string;
+  author?: string;
 };
 
 export type PromptGroupListResponse = {
@@ -461,3 +489,5 @@ export type TGetRandomPromptsRequest = {
   limit: number;
   skip: number;
 };
+
+export type TCustomConfigSpeechResponse = { [key: string]: string };

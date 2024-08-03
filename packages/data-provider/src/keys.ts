@@ -27,13 +27,16 @@ export enum QueryKeys {
   assistantDocs = 'assistantDocs',
   fileDownload = 'fileDownload',
   voices = 'voices',
+  customConfigSpeech = 'customConfigSpeech',
   prompts = 'prompts',
   prompt = 'prompt',
   promptGroups = 'promptGroups',
+  allPromptGroups = 'allPromptGroups',
   promptGroup = 'promptGroup',
   categories = 'categories',
   randomPrompts = 'randomPrompts',
   roles = 'roles',
+  conversationTags = 'conversationTags',
 }
 
 export enum MutationKeys {

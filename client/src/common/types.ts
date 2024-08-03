@@ -83,7 +83,7 @@ export type NavLink = {
   label?: string;
   icon: LucideIcon | React.FC;
   Component?: React.ComponentType;
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent) => void;
   variant?: 'default' | 'ghost';
   id: string;
 };
@@ -374,6 +374,9 @@ export type MentionOption = OptionWithIcon & {
   type: string;
   value: string;
   description?: string;
+};
+export type PromptOption = MentionOption & {
+  id: string;
 };
 
 export type TOptionSettings = {
