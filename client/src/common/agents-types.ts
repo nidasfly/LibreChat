@@ -10,6 +10,7 @@ export type TAgentOption = OptionWithIcon &
   };
 
 export type TAgentCapabilities = {
+  [AgentCapabilities.web_search]: boolean;
   [AgentCapabilities.file_search]: boolean;
   [AgentCapabilities.execute_code]: boolean;
   [AgentCapabilities.end_after_tools]?: boolean;
@@ -28,4 +29,5 @@ export type AgentForm = {
   provider?: AgentProvider | OptionWithIcon;
   agent_ids?: string[];
   [AgentCapabilities.artifacts]?: ArtifactModes | string;
+  recursion_limit?: number;
 } & TAgentCapabilities;

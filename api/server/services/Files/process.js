@@ -29,7 +29,7 @@ const { addAgentResourceFile, removeAgentResourceFiles } = require('~/models/Age
 const { getOpenAIClient } = require('~/server/controllers/assistants/helpers');
 const { createFile, updateFileUsage, deleteFiles } = require('~/models/File');
 const { loadAuthValues } = require('~/server/services/Tools/credentials');
-const { getEndpointsConfig } = require('~/server/services/Config');
+const { checkCapability } = require('~/server/services/Config');
 const { LB_QueueAsyncCall } = require('~/server/utils/queue');
 const { getStrategyFunctions } = require('./strategies');
 const { determineFileType } = require('~/server/utils');
@@ -137,11 +137,13 @@ const processDeleteRequest = async ({ req, files }) => {
   /** @type {Record<string, OpenAI | undefined>} */
   const client = { [FileSources.openai]: undefined, [FileSources.azure]: undefined };
   const initializeClients = async () => {
-    const openAIClient = await getOpenAIClient({
-      req,
-      overrideEndpoint: EModelEndpoint.assistants,
-    });
-    client[FileSources.openai] = openAIClient.openai;
+    if (req.app.locals[EModelEndpoint.assistants]) {
+      const openAIClient = await getOpenAIClient({
+        req,
+        overrideEndpoint: EModelEndpoint.assistants,
+      });
+      client[FileSources.openai] = openAIClient.openai;
+    }
 
     if (!req.app.locals[EModelEndpoint.azureOpenAI]?.assistants) {
       return;
@@ -458,17 +460,6 @@ const processFileUpload = async ({ req, res, metadata }) => {
 };
 
 /**
- * @param {ServerRequest} req
- * @param {AgentCapabilities} capability
- * @returns {Promise<boolean>}
- */
-const checkCapability = async (req, capability) => {
-  const endpointsConfig = await getEndpointsConfig(req);
-  const capabilities = endpointsConfig?.[EModelEndpoint.agents]?.capabilities ?? [];
-  return capabilities.includes(capability);
-};
-
-/**
  * Applies the current strategy for file uploads.
  * Saves file metadata to the database with an expiry TTL.
  * Files must be deleted from the server filesystem manually.
@@ -503,7 +494,7 @@ const processAgentFileUpload = async ({ req, res, metadata }) => {
 
   let fileInfoMetadata;
   const entity_id = messageAttachment === true ? undefined : agent_id;
-
+  const basePath = mime.getType(file.originalname)?.startsWith('image') ? 'images' : 'uploads';
   if (tool_resource === EToolResources.execute_code) {
     const isCodeEnabled = await checkCapability(req, AgentCapabilities.execute_code);
     if (!isCodeEnabled) {
@@ -531,7 +522,7 @@ const processAgentFileUpload = async ({ req, res, metadata }) => {
       throw new Error('OCR capability is not enabled for Agents');
     }
 
-    const { handleFileUpload } = getStrategyFunctions(
+    const { handleFileUpload: uploadMistralOCR } = getStrategyFunctions(
       req.app.locals?.ocr?.strategy ?? FileSources.mistral_ocr,
     );
     const { file_id, temp_file_id } = metadata;
@@ -543,7 +534,7 @@ const processAgentFileUpload = async ({ req, res, metadata }) => {
       images,
       filename,
       filepath: ocrFileURL,
-    } = await handleFileUpload({ req, file, file_id, entity_id: agent_id });
+    } = await uploadMistralOCR({ req, file, file_id, entity_id: agent_id, basePath });
 
     const fileInfo = removeNullishValues({
       text,
@@ -551,7 +542,7 @@ const processAgentFileUpload = async ({ req, res, metadata }) => {
       file_id,
       temp_file_id,
       user: req.user.id,
-      type: file.mimetype,
+      type: 'text/plain',
       filepath: ocrFileURL,
       source: FileSources.text,
       filename: filename ?? file.originalname,
@@ -593,6 +584,7 @@ const processAgentFileUpload = async ({ req, res, metadata }) => {
     file,
     file_id,
     entity_id,
+    basePath,
   });
 
   let filepath = _filepath;
@@ -703,7 +695,7 @@ const processOpenAIFile = async ({
 const processOpenAIImageOutput = async ({ req, buffer, file_id, filename, fileExt }) => {
   const currentDate = new Date();
   const formattedDate = currentDate.toISOString();
-  const _file = await convertImage(req, buffer, 'high', `${file_id}${fileExt}`);
+  const _file = await convertImage(req, buffer, undefined, `${file_id}${fileExt}`);
   const file = {
     ..._file,
     usage: 1,
@@ -848,8 +840,9 @@ function base64ToBuffer(base64String) {
 
 async function saveBase64Image(
   url,
-  { req, file_id: _file_id, filename: _filename, endpoint, context, resolution = 'high' },
+  { req, file_id: _file_id, filename: _filename, endpoint, context, resolution },
 ) {
+  const effectiveResolution = resolution ?? req.app.locals.fileConfig?.imageGeneration ?? 'high';
   const file_id = _file_id ?? v4();
   let filename = `${file_id}-${_filename}`;
   const { buffer: inputBuffer, type } = base64ToBuffer(url);
@@ -862,7 +855,7 @@ async function saveBase64Image(
     }
   }
 
-  const image = await resizeImageBuffer(inputBuffer, resolution, endpoint);
+  const image = await resizeImageBuffer(inputBuffer, effectiveResolution, endpoint);
   const source = req.app.locals.fileStrategy;
   const { saveBuffer } = getStrategyFunctions(source);
   const filepath = await saveBuffer({

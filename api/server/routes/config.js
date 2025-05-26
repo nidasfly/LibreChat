@@ -58,6 +58,7 @@ router.get('/', async function (req, res) {
         !!process.env.OPENID_SESSION_SECRET,
       openidLabel: process.env.OPENID_BUTTON_LABEL || 'Continue with OpenID',
       openidImageUrl: process.env.OPENID_IMAGE_URL,
+      openidAutoRedirect: isEnabled(process.env.OPENID_AUTO_REDIRECT),
       serverDomain: process.env.DOMAIN_SERVER || 'http://localhost:3080',
       emailLoginEnabled,
       registrationEnabled: !ldap?.enabled && isEnabled(process.env.ALLOW_REGISTRATION),
@@ -68,20 +69,42 @@ router.get('/', async function (req, res) {
         !!process.env.EMAIL_PASSWORD &&
         !!process.env.EMAIL_FROM,
       passwordResetEnabled,
-      checkBalance: isEnabled(process.env.CHECK_BALANCE),
       showBirthdayIcon:
         isBirthday() ||
         isEnabled(process.env.SHOW_BIRTHDAY_ICON) ||
         process.env.SHOW_BIRTHDAY_ICON === '',
       helpAndFaqURL: process.env.HELP_AND_FAQ_URL || 'https://librechat.ai',
       interface: req.app.locals.interfaceConfig,
+      turnstile: req.app.locals.turnstileConfig,
       modelSpecs: req.app.locals.modelSpecs,
+      balance: req.app.locals.balance,
       sharedLinksEnabled,
       publicSharedLinksEnabled,
       analyticsGtmId: process.env.ANALYTICS_GTM_ID,
       instanceProjectId: instanceProject._id.toString(),
       bundlerURL: process.env.SANDPACK_BUNDLER_URL,
+      staticBundlerURL: process.env.SANDPACK_STATIC_BUNDLER_URL,
     };
+    /** @type {TCustomConfig['webSearch']} */
+    const webSearchConfig = req.app.locals.webSearch;
+    if (
+      webSearchConfig != null &&
+      (webSearchConfig.searchProvider ||
+        webSearchConfig.scraperType ||
+        webSearchConfig.rerankerType)
+    ) {
+      payload.webSearch = {};
+    }
+
+    if (webSearchConfig?.searchProvider) {
+      payload.webSearch.searchProvider = webSearchConfig.searchProvider;
+    }
+    if (webSearchConfig?.scraperType) {
+      payload.webSearch.scraperType = webSearchConfig.scraperType;
+    }
+    if (webSearchConfig?.rerankerType) {
+      payload.webSearch.rerankerType = webSearchConfig.rerankerType;
+    }
 
     if (ldap) {
       payload.ldap = ldap;

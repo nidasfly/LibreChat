@@ -1,11 +1,11 @@
 jest.mock('~/cache/getLogStores');
 const request = require('supertest');
 const express = require('express');
-const routes = require('../');
+const configRoute = require('../config');
 // file deepcode ignore UseCsurfForExpress/test: test
 const app = express();
 app.disable('x-powered-by');
-app.use('/api/config', routes.config);
+app.use('/api/config', configRoute);
 
 afterEach(() => {
   delete process.env.APP_TITLE;
@@ -18,6 +18,7 @@ afterEach(() => {
   delete process.env.OPENID_ISSUER;
   delete process.env.OPENID_SESSION_SECRET;
   delete process.env.OPENID_BUTTON_LABEL;
+  delete process.env.OPENID_AUTO_REDIRECT;
   delete process.env.OPENID_AUTH_URL;
   delete process.env.GITHUB_CLIENT_ID;
   delete process.env.GITHUB_CLIENT_SECRET;

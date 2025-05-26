@@ -13,6 +13,7 @@ export interface IAgent extends Omit<Document, 'model'> {
   model_parameters?: Record<string, unknown>;
   artifacts?: string;
   access_level?: number;
+  recursion_limit?: number;
   tools?: string[];
   tool_kwargs?: Array<unknown>;
   actions?: string[];
@@ -25,6 +26,7 @@ export interface IAgent extends Omit<Document, 'model'> {
   conversation_starters?: string[];
   tool_resources?: unknown;
   projectIds?: Types.ObjectId[];
+  versions?: Omit<IAgent, 'versions'>[];
 }
 
 const agentSchema = new Schema<IAgent>(
@@ -63,6 +65,9 @@ const agentSchema = new Schema<IAgent>(
       type: String,
     },
     access_level: {
+      type: Number,
+    },
+    recursion_limit: {
       type: Number,
     },
     tools: {
@@ -110,6 +115,10 @@ const agentSchema = new Schema<IAgent>(
       type: [Schema.Types.ObjectId],
       ref: 'Project',
       index: true,
+    },
+    versions: {
+      type: [Schema.Types.Mixed],
+      default: [],
     },
   },
   {

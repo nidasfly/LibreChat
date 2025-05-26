@@ -56,7 +56,7 @@ const logoutUser = async (req, refreshToken) => {
     try {
       req.session.destroy();
     } catch (destroyErr) {
-      logger.error('[logoutUser] Failed to destroy session.', destroyErr);
+      logger.debug('[logoutUser] Failed to destroy session.', destroyErr);
     }
 
     return { status: 200, message: 'Logout successful' };
@@ -91,7 +91,7 @@ const sendVerificationEmail = async (user) => {
     subject: 'Verify your email',
     payload: {
       appName: process.env.APP_TITLE || 'LibreChat',
-      name: user.name,
+      name: user.name || user.username || user.email,
       verificationLink: verificationLink,
       year: new Date().getFullYear(),
     },
@@ -278,7 +278,7 @@ const requestPasswordReset = async (req) => {
       subject: 'Password Reset Request',
       payload: {
         appName: process.env.APP_TITLE || 'LibreChat',
-        name: user.name,
+        name: user.name || user.username || user.email,
         link: link,
         year: new Date().getFullYear(),
       },
@@ -331,7 +331,7 @@ const resetPassword = async (userId, token, password) => {
       subject: 'Password Reset Successfully',
       payload: {
         appName: process.env.APP_TITLE || 'LibreChat',
-        name: user.name,
+        name: user.name || user.username || user.email,
         year: new Date().getFullYear(),
       },
       template: 'passwordReset.handlebars',
@@ -377,10 +377,59 @@ const setAuthTokens = async (userId, res, sessionId = null) => {
       secure: isProduction,
       sameSite: 'strict',
     });
-
+    res.cookie('token_provider', 'librechat', {
+      expires: new Date(refreshTokenExpires),
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'strict',
+    });
     return token;
   } catch (error) {
     logger.error('[setAuthTokens] Error in setting authentication tokens:', error);
+    throw error;
+  }
+};
+/**
+ * @function setOpenIDAuthTokens
+ * Set OpenID Authentication Tokens
+ * //type tokenset from openid-client
+ * @param {import('openid-client').TokenEndpointResponse & import('openid-client').TokenEndpointResponseHelpers} tokenset
+ * - The tokenset object containing access and refresh tokens
+ * @param {Object} res - response object
+ * @returns {String} - access token
+ */
+const setOpenIDAuthTokens = (tokenset, res) => {
+  try {
+    if (!tokenset) {
+      logger.error('[setOpenIDAuthTokens] No tokenset found in request');
+      return;
+    }
+    const { REFRESH_TOKEN_EXPIRY } = process.env ?? {};
+    const expiryInMilliseconds = eval(REFRESH_TOKEN_EXPIRY) ?? 1000 * 60 * 60 * 24 * 7; // 7 days default
+    const expirationDate = new Date(Date.now() + expiryInMilliseconds);
+    if (tokenset == null) {
+      logger.error('[setOpenIDAuthTokens] No tokenset found in request');
+      return;
+    }
+    if (!tokenset.access_token || !tokenset.refresh_token) {
+      logger.error('[setOpenIDAuthTokens] No access or refresh token found in tokenset');
+      return;
+    }
+    res.cookie('refreshToken', tokenset.refresh_token, {
+      expires: expirationDate,
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'strict',
+    });
+    res.cookie('token_provider', 'openid', {
+      expires: expirationDate,
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'strict',
+    });
+    return tokenset.access_token;
+  } catch (error) {
+    logger.error('[setOpenIDAuthTokens] Error in setting authentication tokens:', error);
     throw error;
   }
 };
@@ -414,7 +463,7 @@ const resendVerificationEmail = async (req) => {
       subject: 'Verify your email',
       payload: {
         appName: process.env.APP_TITLE || 'LibreChat',
-        name: user.name,
+        name: user.name || user.username || user.email,
         verificationLink: verificationLink,
         year: new Date().getFullYear(),
       },
@@ -452,4 +501,5 @@ module.exports = {
   resetPassword,
   requestPasswordReset,
   resendVerificationEmail,
+  setOpenIDAuthTokens,
 };
