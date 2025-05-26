@@ -782,6 +782,7 @@ export const googleGenConfigSchema = z
     presencePenalty: coerceNumber.optional(),
     frequencyPenalty: coerceNumber.optional(),
     stopSequences: z.array(z.string()).optional(),
+    response_modalities: z.array(z.string()).optional(), // add modalities params
   })
   .strip()
   .optional();

@@ -644,6 +644,12 @@ class GoogleClient extends BaseClient {
         /** @type {GenerativeModel} */
         const client = this.client;
         /** @type {GenerateContentRequest} */
+        if (modelName === 'gemini-2.0-flash-exp') { // allow this model to generate image
+          this.modelOptions.response_modalities = [
+            "image",
+            "text",
+          ];
+        }
         const requestOptions = {
           safetySettings,
           contents: _payload,
